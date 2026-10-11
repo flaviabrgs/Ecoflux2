@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+  <h2>Scanner de Ponto (QR Code)</h2>
+  <div id="qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div>
+  <p id="qr-result" style="margin-top: 10px; font-size: 0.85rem; color: var(--verde-folha); font-weight: 700;"></p>
+</div>
+
+<div class="card">
+  <h2>Homologação do Descarte</h2>
+  <form id="form-descarte">
+    <input type="hidden" id="qr_token" name="qr_token">
+    <input type="hidden" id="latitude" name="latitude">
+    <input type="hidden" id="longitude" name="longitude">
+
+    <div class="form-group">
+      <label for="tipo_residuo">Material Descartado</label>
+      <select id="tipo_residuo" name="tipo_residuo" required>
+        <option value="">Selecione a categoria...</option>
+        <option value="VIDRO">Vidro (+100 pts)</option>
+        <option value="PLASTICO">Plástico (+60 pts)</option>
+        <option value="METAL">Metal (+40 pts)</option>
+        <option value="PAPEL">Papel (+10 pts)</option>
+        <option value="ORGANICO">Orgânico (+5 pts)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="foto">Foto Comprobatória (Câmera)</label>
+      <input type="file" id="foto" name="foto" accept="image/*" capture="environment" required>
+    </div>
+
+    <button type="submit" class="btn-primary" id="btn-enviar">Validar Descarte</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  let scannedToken = "";
+
+  // Inicialização do Scanner de QR Code
+  function onScanSuccess(decodedText, decodedResult) {
+    scannedToken = decodedText;
+    document.getElementById("qr_token").value = decodedText;
+    document.getElementById("qr-result").innerText = "PEV Identificado: " + decodedText;
+    html5QrcodeScanner.clear();
+  }
+
+  const html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 220 });
+  html5QrcodeScanner.render(onScanSuccess);
+
+  // Captura do GPS e Submissão
+  document.getElementById("form-descarte").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-enviar");
+
+    if (!document.getElementById("qr_token").value) {
+      alert("Escaneie o QR Code do PEV antes de registrar.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Checando Geofencing...";
+
+    if (!navigator.geolocation) {
+      alert("Acesso a geolocalização é mandatória para este recurso.");
+      btn.disabled = false;
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        document.getElementById("latitude").value = position.coords.latitude;
+        document.getElementById("longitude").value = position.coords.longitude;
+
+        const formData = new FormData(document.getElementById("form-descarte"));
+        fetch("/api/processar-descarte", {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message + " +" + data.pontos + " pontos!");
+            window.location.href = "/";
+          } else {
+            alert("Aviso: " + data.message);
+            btn.disabled = false;
+            btn.innerText = "Validar Descarte";
+          }
+        })
+        .catch(() => {
+          alert("Falha de conexão com o servidor local.");
+          btn.disabled = false;
+        });
+      },
+      (err) => {
+        alert("Ative seu GPS para validar a proximidade do PEV.");
+        btn.disabled = false;
+        btn.innerText = "Validar Descarte";
+      },
+      { enableHighAccuracy: true }
+    );
+  });
+</script>
+{% endblock %}

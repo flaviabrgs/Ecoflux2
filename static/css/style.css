@@ -1,0 +1,200 @@
+:root {
+  --verde-floresta: #1B3624;
+  --fundo-areia: #F3EEE1;
+  --fundo-card: #EAE4D9;
+  --marigold-ouro: #EAA135;
+  --verde-folha: #4B7E33;
+  --verde-oliva: #95B13A;
+  --texto-escuro: #1A1A1A;
+  --texto-suave: #57655B;
+  --branco: #FFFFFF;
+  --erro: #A83232;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--fundo-areia);
+  color: var(--texto-escuro);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header.top-bar {
+  background-color: var(--verde-floresta);
+  color: var(--branco);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo-tag {
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.5px;
+}
+
+.badge-pontos {
+  background-color: var(--marigold-ouro);
+  color: var(--verde-floresta);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+main.content-area {
+  flex: 1;
+  padding: 16px;
+  margin-bottom: 75px;
+}
+
+.card {
+  background-color: var(--fundo-card);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.card h2 {
+  font-size: 1.1rem;
+  color: var(--verde-floresta);
+  margin-bottom: 12px;
+}
+
+/* Formulários e Ações */
+.form-group {
+  margin-bottom: 14px;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--texto-suave);
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #CCC5B9;
+  background-color: var(--branco);
+  font-size: 1rem;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--verde-folha);
+}
+
+.btn-primary {
+  width: 100%;
+  background-color: var(--verde-floresta);
+  color: var(--branco);
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:active {
+  opacity: 0.9;
+}
+
+/* Alertas */
+.alert {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.alert-danger { background-color: #F8D7DA; color: var(--erro); }
+.alert-warning { background-color: #FFF3CD; color: #856404; }
+.alert-success { background-color: #D4EDDA; color: #155724; }
+
+/* Barra de Navegação Inferior (Mobile-First) */
+nav.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--verde-floresta);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  height: 65px;
+  z-index: 1000;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--verde-oliva);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.nav-item.active {
+  color: var(--marigold-ouro);
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 4px;
+  fill: currentColor;
+}
+
+/* Estilo do Mapa */
+#map {
+  width: 100%;
+  height: 380px;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+/* Tabelas de Ranking */
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ranking-table th, .ranking-table td {
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.ranking-table tr {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ranking-table th {
+  color: var(--texto-suave);
+}
+
+.ranking-table td:last-child {
+  font-weight: 700;
+  color: var(--verde-floresta);
+  text-align: right;
+}

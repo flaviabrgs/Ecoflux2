@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ecoflux | Autenticação</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="justify-content: center; padding: 20px;">
+
+  <div style="text-align: center; margin-bottom: 20px;">
+    <h1 style="color: var(--verde-floresta); font-size: 2rem;">ECOFLUX</h1>
+    <p style="font-size: 0.85rem; color: var(--texto-suave);">Campus UFRPE Dois Irmãos</p>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- Login -->
+  <div class="card" id="card-login">
+    <h2>Acesso à Plataforma</h2>
+    <form action="{{ url_for('login') }}" method="POST">
+      <div class="form-group">
+        <label for="email">E-mail Institucional</label>
+        <input type="email" name="email" id="email" required>
+      </div>
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input type="password" name="senha" id="senha" required>
+      </div>
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+    <div style="margin-top: 15px; font-size: 0.8rem; display: flex; justify-content: space-between;">
+      <a href="#" onclick="trocarView('cadastro')" style="color: var(--verde-folha);">Novo cadastro</a>
+      <a href="#" onclick="trocarView('recuperar')" style="color: var(--texto-suave);">Esqueci a senha</a>
+    </div>
+  </div>
+
+  <!-- Cadastro -->
+  <div class="card" id="card-cadastro" style="display: none;">
+    <h2>Novo Cadastro</h2>
+    <form action="{{ url_for('cadastro') }}" method="POST">
+      <div class="form-group">
+        <label>Nome Completo</label>
+        <input type="text" name="nome" required>
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Curso</label>
+        <input type="text" name="curso" placeholder="Ex: BSI, Agronomia, Zootecnia" required>
+      </div>
+      <div class="form-group">
+        <label>Data de Nascimento</label>
+        <input type="date" name="data_nasc" required>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" name="senha" required>
+      </div>
+      <button type="submit" class="btn-primary">Criar Perfil</button>
+    </form>
+    <div style="margin-top: 15px; text-align: center;">
+      <a href="#" onclick="trocarView('login')" style="color: var(--verde-folha); font-size: 0.8rem;">Voltar ao login</a>
+    </div>
+  </div>
+
+  <!-- Recuperação de Senha -->
+  <div class="card" id="card-recuperar" style="display: none;">
+    <h2>Redefinição de Acesso</h2>
+    <form action="{{ url_for('recuperar_senha') }}" method="POST">
+      <div class="form-group">
+        <label>E-mail Cadastrado</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Data de Nascimento Cadastrada</label>
+        <input type="date" name="data_nasc" required>
+      </div>
+      <div class="form-group">
+        <label>Nova Senha</label>
+        <input type="password" name="nova_senha" required>
+      </div>
+      <button type="submit" class="btn-primary">Atualizar Senha</button>
+    </form>
+    <div style="margin-top: 15px; text-align: center;">
+      <a href="#" onclick="trocarView('login')" style="color: var(--verde-folha); font-size: 0.8rem;">Voltar ao login</a>
+    </div>
+  </div>
+
+  <script>
+    function trocarView(tipo) {
+      document.getElementById('card-login').style.display = tipo === 'login' ? 'block' : 'none';
+      document.getElementById('card-cadastro').style.display = tipo === 'cadastro' ? 'block' : 'none';
+      document.getElementById('card-recuperar').style.display = tipo === 'recuperar' ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

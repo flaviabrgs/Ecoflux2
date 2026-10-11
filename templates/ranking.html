@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+  <h2>Liderança Acadêmica</h2>
+  <table class="ranking-table">
+    <thead>
+      <tr>
+        <th>Pos</th>
+        <th>Aluno</th>
+        <th>Curso</th>
+        <th>Pts</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in individual %}
+      <tr>
+        <td>#{{ loop.index }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.curso }}</td>
+        <td>{{ u.saldo_pontos }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Placar por Cursos (Intercursos)</h2>
+  <table class="ranking-table">
+    <thead>
+      <tr>
+        <th>Pos</th>
+        <th>Curso</th>
+        <th>Descartadores</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cursos %}
+      <tr>
+        <td>#{{ loop.index }}</td>
+        <td>{{ c.curso }}</td>
+        <td>{{ c.total_alunos }}</td>
+        <td>{{ c.total_pontos }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

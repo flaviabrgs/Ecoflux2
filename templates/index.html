@@ -1,0 +1,42 @@
+{% block scripts %}
+<!-- Armazena os dados vindos do Flask de forma segura -->
+<script id="pevs-data" type="application/json">
+  {{ pevs | tojson }}
+</script>
+
+<script>
+  // Inicialização no Campus UFRPE
+  const map = L.map('map').setView([-8.01635, -34.95015], 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Lê e converte o JSON
+  const pevs = JSON.parse(document.getElementById('pevs-data').textContent);
+  
+  pevs.forEach(pev => {
+    L.circleMarker([pev.latitude, pev.longitude], {
+      color: '#1B3624',
+      fillColor: '#4B7E33',
+      fillOpacity: 0.85,
+      radius: 8
+    }).addTo(map)
+      .bindPopup(`<b>${pev.nome}</b><br>${pev.bloco}<br>Capacidade: ${pev.capacidade_litros}L`);
+  });
+
+  // Localização do utilizador no mapa via GPS
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      L.circleMarker([lat, lon], {
+        color: '#EAA135',
+        fillColor: '#EAA135',
+        fillOpacity: 0.9,
+        radius: 6
+      }).addTo(map).bindPopup("Você está aqui.");
+    });
+  }
+</script>
+{% endblock %}
