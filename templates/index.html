@@ -1,42 +1,151 @@
-{% block scripts %}
-<!-- Armazena os dados vindos do Flask de forma segura -->
-<script id="pevs-data" type="application/json">
-  {{ pevs | tojson }}
-</script>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecoflux — Campus UFRPE</title>
 
-<script>
-  // Inicialização no Campus UFRPE
-  const map = L.map('map').setView([-8.01635, -34.95015], 16);
+    <!-- Leaflet CSS (Carregado com prioridade) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <!-- Leaflet JS (Colocado AQUI no head para garantir que 'L' exista antes do script do mapa) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+    <style>
+        :root {
+            --floresta: #1B3624;
+            --areia: #F3EEE1;
+            --areia-card: #EAE4D9;
+            --marigold: #EAA135;
+            --verde-ativo: #4B7E33;
+            --texto: #2D3748;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--areia);
+            color: var(--texto);
+            padding-bottom: 80px;
+        }
+        header {
+            background-color: var(--floresta);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand { font-size: 1.25rem; font-weight: bold; }
+        .score-pill {
+            background-color: var(--marigold);
+            color: #1a202c;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        main { padding: 16px; max-width: 600px; margin: 0 auto; }
+        .map-container {
+            height: 320px;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--areia-card);
+            margin-bottom: 20px;
+            background-color: #e2e8f0;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: var(--floresta);
+        }
+        .pev-list { display: flex; flex-direction: column; gap: 10px; }
+        .pev-card {
+            background: white;
+            border: 1px solid var(--areia-card);
+            border-radius: 10px;
+            padding: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .pev-name { font-weight: bold; color: var(--floresta); margin-bottom: 4px; }
+        .pev-desc { font-size: 0.85rem; color: #718096; }
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--floresta);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 1000;
+        }
+        .nav-item {
+            color: #e2e8f0;
+            text-decoration: none;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .nav-item.active { color: var(--marigold); font-weight: bold; }
+    </style>
+</head>
+<body>
 
-  // Lê e converte o JSON
-  const pevs = JSON.parse(document.getElementById('pevs-data').textContent);
-  
-  pevs.forEach(pev => {
-    L.circleMarker([pev.latitude, pev.longitude], {
-      color: '#1B3624',
-      fillColor: '#4B7E33',
-      fillOpacity: 0.85,
-      radius: 8
-    }).addTo(map)
-      .bindPopup(`<b>${pev.nome}</b><br>${pev.bloco}<br>Capacidade: ${pev.capacidade_litros}L`);
-  });
+    <header>
+        <div class="brand">Ecoflux</div>
+        <div class="score-pill">⭐ {{ user_pontos }} pts</div>
+    </header>
 
-  // Localização do utilizador no mapa via GPS
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(position => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      L.circleMarker([lat, lon], {
-        color: '#EAA135',
-        fillColor: '#EAA135',
-        fillOpacity: 0.9,
-        radius: 6
-      }).addTo(map).bindPopup("Você está aqui.");
-    });
-  }
-</script>
-{% endblock %}
+    <main>
+        <h2 class="section-title">Pontos de Coleta (Dois Irmãos)</h2>
+        <div id="map" class="map-container"></div>
+
+        <h2 class="section-title">PEVs Disponíveis</h2>
+        <div class="pev-list">
+            {% for pev in pevs %}
+            <div class="pev-card">
+                <div class="pev-name">{{ pev.nome }}</div>
+                <div class="pev-desc">{{ pev.bloco }} • Capacidade: {{ pev.capacidade_litros }}L</div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <nav class="nav-bar">
+        <a href="/" class="nav-item active">Mapa</a>
+        <a href="/descarte" class="nav-item">Descartar</a>
+        <a href="/ranking" class="nav-item">Rankings</a>
+        <a href="/perfil" class="nav-item">Perfil</a>
+    </nav>
+
+    <!-- Script de Inicialização Seguro -->
+    <script>
+        window.addEventListener("load", function() {
+            // Garante que o objeto 'L' do Leaflet está disponível antes de rodar
+            if (typeof L === 'undefined') {
+                console.error("Falha ao carregar a biblioteca Leaflet. Verifique a conexão com a internet.");
+                document.getElementById('map').innerHTML = "<p style='padding:20px;text-align:center;'>Erro ao carregar o mapa. Conecte-se à internet para carregar os componentes.</p>";
+                return;
+            }
+
+            // Coordenadas centrais da UFRPE Dois Irmãos
+            var map = L.map('map').setView([-8.01635, -34.95015], 16);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Carrega os PEVs passados pelo Flask
+            var pontos = {{ pevs|tojson }};
+            pontos.forEach(function(p) {
+                L.marker([p.latitude, p.longitude])
+                    .addTo(map)
+                    .bindPopup("<b>" + p.nome + "</b><br>" + p.bloco);
+            });
+        });
+    </script>
+</body>
+</html>

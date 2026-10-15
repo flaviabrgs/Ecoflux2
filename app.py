@@ -1,13 +1,18 @@
 import os
 import math
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import bcrypt
 
 app = Flask(__name__)
+# Chave de sessão e configuração de cookies para evitar bloqueio do Chrome em HTTP local
 app.secret_key = "ecoflux_ufrpe_secret_key_prod_safe"
+app.config["SESSION_COOKIE_SECURE"] = False  # Permite envio de cookie em HTTP de desenvolvimento
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
@@ -32,12 +37,13 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
+    # senha_hash definida como TEXT para garantir compatibilidade
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        senha_hash BLOB NOT NULL,
+        senha_hash TEXT NOT NULL,
         data_nasc TEXT NOT NULL,
         curso TEXT NOT NULL,
         role TEXT DEFAULT 'ALUNO',
@@ -86,7 +92,6 @@ def init_db():
     )
     """)
 
-    # Seed inicial de PEVs no Campus UFRPE Dois Irmãos se a tabela estiver vazia
     cursor.execute("SELECT COUNT(*) as count FROM pontos_descarte")
     if cursor.fetchone()["count"] == 0:
         pevs = [
@@ -105,9 +110,8 @@ def init_db():
 
 init_db()
 
-# --- Geofencing: Fórmula de Haversine ---
 def haversine_distance(lat1, lon1, lat2, lon2):
-    R = 6371000  # Raio da Terra em metros
+    R = 6371000  # metros
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
@@ -116,7 +120,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-# --- Middleware de Sessão ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -135,7 +138,7 @@ def login():
         
         conn = get_db()
         user = conn.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
-        agora = datetime.utcnow()
+        agora = datetime.now(timezone.utc)
 
         if user:
             # Checa rate limit de 30 segundos
@@ -147,8 +150,20 @@ def login():
                     flash(f"Acesso bloqueado por tentativas falhas. Aguarde {segundos_restantes}s.", "danger")
                     return render_template("login.html")
 
-            # Verifica credenciais
-            if bcrypt.checkpw(senha.encode("utf-8"), user["senha_hash"]):
+            # Tratamento robusto do hash vindo do SQLite (aceita bytes, str ou buffer)
+            hash_salvo = user["senha_hash"]
+            if isinstance(hash_salvo, str):
+                hash_bytes = hash_salvo.encode("utf-8")
+            else:
+                hash_bytes = bytes(hash_salvo)
+
+            try:
+                senha_correta = bcrypt.checkpw(senha.encode("utf-8"), hash_bytes)
+            except Exception as e:
+                print(f"[ERRO BCRYPT] Falha na comparação: {e}")
+                senha_correta = False
+
+            if senha_correta:
                 conn.execute("UPDATE usuarios SET falhas_login = 0, bloqueado_ate = NULL WHERE id = ?", (user["id"],))
                 conn.commit()
                 session["user_id"] = user["id"]
@@ -188,14 +203,15 @@ def cadastro():
         flash("Preencha todos os campos obrigatórios.", "danger")
         return redirect(url_for("login"))
 
-    senha_hash = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt())
+    # Salva sempre como string decodificada (TEXT no SQLite)
+    senha_hash_str = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     conn = get_db()
     try:
         conn.execute("""
             INSERT INTO usuarios (nome, email, senha_hash, data_nasc, curso)
             VALUES (?, ?, ?, ?, ?)
-        """, (nome, email, senha_hash, data_nasc, curso))
+        """, (nome, email, senha_hash_str, data_nasc, curso))
         conn.commit()
         flash("Conta registrada com sucesso! Realize o login.", "success")
     except sqlite3.IntegrityError:
@@ -215,9 +231,9 @@ def recuperar_senha():
     user = conn.execute("SELECT * FROM usuarios WHERE email = ? AND data_nasc = ?", (email, data_nasc)).fetchone()
 
     if user:
-        novo_hash = bcrypt.hashpw(nova_senha.encode("utf-8"), bcrypt.gensalt())
+        novo_hash_str = bcrypt.hashpw(nova_senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         conn.execute("UPDATE usuarios SET senha_hash = ?, falhas_login = 0, bloqueado_ate = NULL WHERE id = ?", 
-                     (novo_hash, user["id"]))
+                     (novo_hash_str, user["id"]))
         conn.commit()
         flash("Senha redefinida com sucesso. Acesse com sua nova chave.", "success")
     else:
@@ -268,7 +284,6 @@ def processar_descarte():
         conn.close()
         return jsonify({"success": False, "message": "Ponto de Entrega Voluntária não reconhecido."}), 404
 
-    # Validação de Geofencing (30 metros)
     distancia = haversine_distance(lat_usuario, lon_usuario, pev["latitude"], pev["longitude"])
     if distancia > 30.0:
         conn.close()
@@ -277,13 +292,12 @@ def processar_descarte():
             "message": f"Você está a {int(distancia)}m do PEV. Aproxime-se a menos de 30m para confirmar o descarte."
         }), 403
 
-    # Salva foto
-    filename = f"{session['user_id']}_{int(datetime.utcnow().timestamp())}_{foto.filename}"
+    filename = f"{session['user_id']}_{int(datetime.now(timezone.utc).timestamp())}_{foto.filename}"
     caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     foto.save(caminho_foto)
 
     pontos = PONTUACAO_RESIDUOS[tipo_residuo]
-    agora_str = datetime.utcnow().isoformat()
+    agora_str = datetime.now(timezone.utc).isoformat()
 
     conn.execute("""
         INSERT INTO descartes (usuario_id, ponto_id, tipo_residuo, foto_url, pontos_ganhos, data_hora)
@@ -334,6 +348,3 @@ def perfil():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
-if __name__ == '__main__':
-    # ssl_context='adhoc' gera um certificado SSL temporário
-    app.run(host='0.0.0.0', port=5000, debug=True, ssl_context='adhoc')
