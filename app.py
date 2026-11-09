@@ -4,18 +4,30 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.utils import secure_filename
 import bcrypt
 
+# Detecta se está rodando na Vercel (filesystem somente leitura, exceto /tmp)
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+
 app = Flask(__name__)
-# Chave de sessão e configuração de cookies para evitar bloqueio do Chrome em HTTP local
-app.secret_key = "ecoflux_ufrpe_secret_key_prod_safe"
-app.config["SESSION_COOKIE_SECURE"] = False  # Permite envio de cookie em HTTP de desenvolvimento
+app.secret_key = os.environ.get("SECRET_KEY", "ecoflux_ufrpe_secret_key_prod_safe")
+app.config["SESSION_COOKIE_SECURE"] = IS_VERCEL  # HTTPS na Vercel, HTTP no ambiente local
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "database.db")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+
+if IS_VERCEL:
+    # ATENÇÃO: /tmp é temporário e não é compartilhado entre instâncias.
+    # Os dados são perdidos quando a função serverless reinicia.
+    DATA_DIR = "/tmp"
+    UPLOAD_FOLDER = os.path.join(DATA_DIR, "uploads")
+else:
+    DATA_DIR = BASE_DIR
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+
+DB_PATH = os.path.join(DATA_DIR, "database.db")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -292,7 +304,8 @@ def processar_descarte():
             "message": f"Você está a {int(distancia)}m do PEV. Aproxime-se a menos de 30m para confirmar o descarte."
         }), 403
 
-    filename = f"{session['user_id']}_{int(datetime.now(timezone.utc).timestamp())}_{foto.filename}"
+    nome_seguro = secure_filename(foto.filename or "foto.jpg") or "foto.jpg"
+    filename = f"{session['user_id']}_{int(datetime.now(timezone.utc).timestamp())}_{nome_seguro}"
     caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     foto.save(caminho_foto)
 
