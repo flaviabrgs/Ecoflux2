@@ -93,7 +93,7 @@ def init_db():
     cursor.execute("SELECT COUNT(*) as count FROM pontos_descarte")
     if cursor.fetchone()["count"] == 0:
         pevs = [
-            ("PEV Sala de Aula - Teste", "Sala de Aula / UFRPE", -8.017612328357925, -34.94409337258702, "ECO-SALA-01", 200),
+            ("PEV Sala de Aula - Teste", "Sala de Aula / UFRPE", -8.018179, -34.944376, "ECO-SALA-01", 200),
             ("PEV CEAGRI - Central", "Bloco Central / CEAGRI", -8.01635, -34.95015, "ECO-CEAGRI-01", 240),
             ("PEV BSI - Informática", "Prédio da Computação", -8.01750, -34.94920, "ECO-BSI-02", 200),
             ("PEV RU - Restaurante Universitário", "Refeitório Central", -8.01520, -34.94880, "ECO-RU-03", 400),
@@ -288,11 +288,11 @@ def processar_descarte():
         return jsonify({"success": False, "message": "Ponto de Entrega Voluntária não reconhecido."}), 404
 
     distancia = haversine_distance(lat_usuario, lon_usuario, pev["latitude"], pev["longitude"])
-    if distancia > 30.0:
+    if distancia > 100:
         conn.close()
         return jsonify({
             "success": False, 
-            "message": f"Você está a {int(distancia)}m do PEV. Aproxime-se a menos de 30m para confirmar o descarte."
+            "message": f"Você está a {int(distancia)}m do PEV. Aproxime-se a menos de 100 m para confirmar o descarte."
         }), 403
 
     filename = f"{session['user_id']}_{int(datetime.now(timezone.utc).timestamp())}_{foto.filename}"
