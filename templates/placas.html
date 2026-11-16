@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoFlux — Placas dos PEVs</title>
+    <style>
+        :root {
+            --floresta: #1B3624;
+            --areia: #F3EEE1;
+            --marigold: #EAA135;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--areia);
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .placa-card {
+            background: white;
+            border: 3px solid var(--floresta);
+            border-radius: 12px;
+            width: 250px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-tag {
+            background-color: var(--floresta);
+            color: var(--marigold);
+            padding: 6px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+        .nome { font-size: 1rem; font-weight: bold; color: var(--floresta); margin-bottom: 4px; }
+        .bloco { font-size: 0.75rem; color: #666; margin-bottom: 12px; }
+        .qr-img {
+            width: 180px;
+            height: 180px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .token-badge {
+            font-family: monospace;
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: var(--floresta);
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .placa-card { box-shadow: none; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    {% for pev in pevs %}
+    <div class="placa-card">
+        <div class="header-tag">ECOFLUX • UFRPE</div>
+        <div class="nome">{{ pev.nome }}</div>
+        <div class="bloco">{{ pev.bloco }}</div>
+        
+        <!-- Carrega a imagem gerada localmente -->
+        <img class="qr-img" src="{{ url_for('static', filename='qrcodes/' ~ pev.qr_token ~ '.png') }}" alt="QR Code">
+        
+        <div>
+            <span class="token-badge">{{ pev.qr_token }}</span>
+        </div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>

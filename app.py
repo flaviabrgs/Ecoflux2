@@ -7,9 +7,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import bcrypt
 
 app = Flask(__name__)
-# Chave de sessão e configuração de cookies para evitar bloqueio do Chrome em HTTP local
 app.secret_key = "ecoflux_ufrpe_secret_key_prod_safe"
-app.config["SESSION_COOKIE_SECURE"] = False  # Permite envio de cookie em HTTP de desenvolvimento
+app.config["SESSION_COOKIE_SECURE"] = False  
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
@@ -19,13 +18,13 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Tabela de Pontuação por Decomposição
+# Tabela de Pontuação Uniforme (10 pontos fixos para qualquer resíduo)
 PONTUACAO_RESIDUOS = {
-    "VIDRO": 100,
-    "PLASTICO": 60,
-    "METAL": 40,
+    "VIDRO": 10,
+    "PLASTICO": 10,
+    "METAL": 10,
     "PAPEL": 10,
-    "ORGANICO": 5
+    "ORGANICO": 10
 }
 
 def get_db():
@@ -37,7 +36,6 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
-    # senha_hash definida como TEXT para garantir compatibilidade
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +93,7 @@ def init_db():
     cursor.execute("SELECT COUNT(*) as count FROM pontos_descarte")
     if cursor.fetchone()["count"] == 0:
         pevs = [
+            ("PEV Sala de Aula - Teste", "Sala de Aula / UFRPE", -8.017612328357925, -34.94409337258702, "ECO-SALA-01", 200),
             ("PEV CEAGRI - Central", "Bloco Central / CEAGRI", -8.01635, -34.95015, "ECO-CEAGRI-01", 240),
             ("PEV BSI - Informática", "Prédio da Computação", -8.01750, -34.94920, "ECO-BSI-02", 200),
             ("PEV RU - Restaurante Universitário", "Refeitório Central", -8.01520, -34.94880, "ECO-RU-03", 400),
@@ -141,7 +140,6 @@ def login():
         agora = datetime.now(timezone.utc)
 
         if user:
-            # Checa rate limit de 30 segundos
             if user["bloqueado_ate"]:
                 bloqueio = datetime.fromisoformat(user["bloqueado_ate"])
                 if agora < bloqueio:
@@ -150,7 +148,6 @@ def login():
                     flash(f"Acesso bloqueado por tentativas falhas. Aguarde {segundos_restantes}s.", "danger")
                     return render_template("login.html")
 
-            # Tratamento robusto do hash vindo do SQLite (aceita bytes, str ou buffer)
             hash_salvo = user["senha_hash"]
             if isinstance(hash_salvo, str):
                 hash_bytes = hash_salvo.encode("utf-8")
@@ -182,7 +179,7 @@ def login():
                     flash(f"Credenciais inválidas. Falha {novas_falhas} de 3.", "warning")
 
                 conn.execute("UPDATE usuarios SET falhas_login = ?, bloqueado_ate = ? WHERE id = ?",
-                             (novas_falhas, bloqueado_ate, user["id"]))
+                           (novas_falhas, bloqueado_ate, user["id"]))
                 conn.commit()
                 conn.close()
                 return render_template("login.html")
@@ -203,7 +200,6 @@ def cadastro():
         flash("Preencha todos os campos obrigatórios.", "danger")
         return redirect(url_for("login"))
 
-    # Salva sempre como string decodificada (TEXT no SQLite)
     senha_hash_str = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     conn = get_db()
@@ -253,6 +249,13 @@ def logout():
 def index():
     conn = get_db()
     user = conn.execute("SELECT saldo_pontos FROM usuarios WHERE id = ?", (session["user_id"],)).fetchone()
+    
+    # SEGURANÇA: Se a sessão for de um banco antigo deletado, limpa e manda logar de novo
+    if not user:
+        conn.close()
+        session.clear()
+        return redirect(url_for("login"))
+
     pontos = conn.execute("SELECT * FROM pontos_descarte WHERE ativo = 1").fetchall()
     conn.close()
     return render_template("index.html", user_pontos=user["saldo_pontos"], pevs=[dict(p) for p in pontos])
@@ -345,6 +348,13 @@ def perfil():
     """, (session["user_id"],)).fetchall()
     conn.close()
     return render_template("base.html", perfil_view=True, user=user, historico=historico)
+
+@app.route("/placas")
+def placas():
+    conn = get_db()
+    pontos = conn.execute("SELECT * FROM pontos_descarte WHERE ativo = 1").fetchall()
+    conn.close()
+    return render_template("placas.html", pevs=[dict(p) for p in pontos])
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
